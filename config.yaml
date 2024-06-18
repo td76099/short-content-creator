@@ -1,0 +1,11 @@
+gcpCreds: "creds/content-creator-424800-2f43c60fd145.json"
+fontDir: "/usr/share/fonts"
+subreddits:
+- name: "AmITheAsshole"
+  postMinLength: 1000
+  usedIDFile: "data/AmITheAsshole.txt"
+  instagramCreds: "creds/AmITheAsshole/instagram.json"
+  tiktokCreds: "creds/AmITheAsshole/tiktok.json"
+  youtubeCreds: "creds/AmITheAsshole/youtube.json"
+  font: "ComicSansMS"
+  voice: "en-US-Standard-H"

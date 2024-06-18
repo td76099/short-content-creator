@@ -138,3 +138,20 @@ func cleanSelftext(text string) string {
 
 	return strings.TrimSpace(text)
 }
+
+func CreateRedditText(subreddit SubredditConfig) string {
+	token, err := getOAuthToken()
+	if err != nil {
+		fmt.Println("Error getting OAuth token:", err)
+		return ""
+	}
+	post, err := getTopPosts(token, subreddit.Name)
+	if err != nil {
+		fmt.Println("Error getting top posts:", err)
+		return ""
+	}
+
+	fmt.Printf("Title: %s\nURL: %s\nContent: %s\n\n", post.Title, post.URL, post.SelfText)
+	ioutil.WriteFile("output.txt", []byte(post.SelfText), 0644)
+	return post.ID
+}
