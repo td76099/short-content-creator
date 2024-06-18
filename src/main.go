@@ -20,6 +20,7 @@ type SubredditConfig struct {
 
 type ContentConfig struct {
 	GCPCreds	string				`yaml:"gcpCreds"`
+	RedditCreds	string				`yaml:"redditCreds"`
 	FontDir		string				`yaml:"fontDir"`
 	Subreddits 	[]SubredditConfig	`yaml:"subreddits"`
 }

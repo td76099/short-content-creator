@@ -1,4 +1,5 @@
-gcpCreds: "creds/content-creator-424800-2f43c60fd145.json"
+gcpCreds: "creds/content-creator-424800-77c44a16a43f.json"
+redditCreds: "creds/reddit.json"
 fontDir: "/usr/share/fonts"
 subreddits:
 - name: "AmITheAsshole"
