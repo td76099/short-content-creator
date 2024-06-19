@@ -6,42 +6,37 @@ import (
 	"log"
 	"io/ioutil"
 
-	texttospeech "cloud.google.com/go/texttospeech/apiv1"
-	texttospeechpb "google.golang.org/genproto/googleapis/cloud/texttospeech/v1"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/polly"
 )
 
-func generateAudio(ctx context.Context, voiceName string, textFile string) *texttospeechpb.SynthesizeSpeechResponse {
-	client, err := texttospeech.NewClient(ctx)
+func generateAudio(ctx context.Context, voiceName string, languageCode string, textFile string) *polly.SynthesizeSpeechOutput {
+	// Create a session with AWS Polly
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String("us-east-1")},
+	)
 	if err != nil {
-		log.Fatalf("Failed to create client: %v", err)
+		log.Fatalf("Failed to create session: %v", err)
 	}
 
-	// Select the type of audio file you want returned.
-	audioConfig := &texttospeechpb.AudioConfig{
-		AudioEncoding: texttospeechpb.AudioEncoding_MP3,
-	}
-
-	// Build the voice request, select the language code ("en-US") and the SSML voice gender.
-	voice := &texttospeechpb.VoiceSelectionParams{
-		LanguageCode: "en-US",
-		Name:         voiceName, // Change this to a standard voice if needed, e.g., "en-US-Standard-D"
-	}
+	// Create Polly client
+	svc := polly.New(sess)
 
 	// The text to synthesize.
 	textRaw, err := ioutil.ReadFile(textFile)
 	text := string(textRaw)
 	fmt.Println(text)
 
-	// Perform the text-to-speech request on the text input with the selected voice parameters and audio file type.
-	req := &texttospeechpb.SynthesizeSpeechRequest{
-		Input: &texttospeechpb.SynthesisInput{
-			InputSource: &texttospeechpb.SynthesisInput_Text{Text: text},
-		},
-		Voice:       voice,
-		AudioConfig: audioConfig,
+	// Perform the text-to-speech request
+	input := &polly.SynthesizeSpeechInput{
+		OutputFormat: aws.String("mp3"),
+		Text:         aws.String(text),
+		VoiceId:      aws.String(voiceName),
+		LanguageCode: aws.String(languageCode),
 	}
 
-	resp, err := client.SynthesizeSpeech(ctx, req)
+	resp, err := svc.SynthesizeSpeech(input)
 	if err != nil {
 		log.Fatalf("Failed to synthesize speech: %v", err)
 	}
@@ -49,16 +44,22 @@ func generateAudio(ctx context.Context, voiceName string, textFile string) *text
 	return resp
 }
 
-func writeAudio(resp *texttospeechpb.SynthesizeSpeechResponse, outputFile string){
-	// Save the audio to a file.
-	err := ioutil.WriteFile(outputFile, resp.AudioContent, 0644)
+func writeAudio(resp *polly.SynthesizeSpeechOutput, outputFile string){
+	// Save the audio to a file
+	defer resp.AudioStream.Close()
+	audioBytes, err := ioutil.ReadAll(resp.AudioStream)
+	if err != nil {
+		log.Fatalf("Failed to read audio stream: %v", err)
+	}
+
+	err = ioutil.WriteFile(outputFile, audioBytes, 0644)
 	if err != nil {
 		log.Fatalf("Failed to write audio file: %v", err)
 	}
 }
 
-func CreateTTS(voice string, textFile string, outputFile string){
+func CreateTTS(voice string, languageCode string, textFile string, outputFile string){
 	ctx := context.Background()
-	resp := generateAudio(ctx, voice, textFile)
+	resp := generateAudio(ctx, voice, languageCode, textFile)
 	writeAudio(resp, outputFile)
 }

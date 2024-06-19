@@ -64,9 +64,9 @@ func formatTime(milliseconds int) string {
 	return fmt.Sprintf("%02d:%02d:%02d,%03d", hours, minutes, seconds, millis)
 }
 
-func CreateSRT(inputFile string, subtitleFileName string, offset int) {
+func CreateSRT(fileConfig FileConfig, offset int) {
 	// Replace "input.json" with the path to your input JSON file
-	data, err := ioutil.ReadFile(inputFile)
+	data, err := ioutil.ReadFile(fileConfig.TimingFileName)
 	if err != nil {
 		fmt.Println("Error reading JSON file:", err)
 		return
@@ -79,7 +79,7 @@ func CreateSRT(inputFile string, subtitleFileName string, offset int) {
 		return
 	}
 
-	err = convertJSONToSRT(jsonData, subtitleFileName, offset)
+	err = convertJSONToSRT(jsonData, fileConfig.SubtitleFileName, offset)
 	if err != nil {
 		fmt.Println("Error converting JSON to SRT:", err)
 	}

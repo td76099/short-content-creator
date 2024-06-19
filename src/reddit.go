@@ -246,7 +246,7 @@ func saveID(id string, idFile string) {
 	}
 }
 
-func CreateRedditText(subreddit SubredditConfig, titleFileName string, titleScreenshotName string, postFileName string) string {
+func CreateRedditText(subreddit SubredditConfig, fileConfig FileConfig) string {
 	token, err := getOAuthToken()
 	if err != nil {
 		fmt.Println("Error getting OAuth token:", err)
@@ -258,9 +258,9 @@ func CreateRedditText(subreddit SubredditConfig, titleFileName string, titleScre
 		return ""
 	}
 
-	titleScreenshot(subreddit.Name, post.Title, titleScreenshotName)
-	ioutil.WriteFile(titleFileName, []byte(post.Title), 0644)
-	ioutil.WriteFile(postFileName, []byte(post.SelfText), 0644)
+	titleScreenshot(subreddit.Name, post.Title, fileConfig.TitleScreenshotName)
+	ioutil.WriteFile(fileConfig.TitleFileName, []byte(post.Title), 0644)
+	ioutil.WriteFile(fileConfig.PostFileName, []byte(post.SelfText), 0644)
 	saveID(post.ID, subreddit.UsedIDFile)
 	
 	return post.ID

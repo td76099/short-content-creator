@@ -7,8 +7,6 @@ FFMPEG it all together
 
 python /gentle/align.py /tmp/output.mp3 /tmp/output.txt -o output.srt
 
-Create workdir that gets cleaned between outputs
 Get a better run/build command - this is not good: go run src/main.go src/srt_generator.go src/reddit.go src/tts.go src/ffmpeg.go
 Create creds reader and publisher for IG/TT/YT
-Get better TTS
 Better subtitles/speech recognition
