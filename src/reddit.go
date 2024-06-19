@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"log"
+	"os"
 	"fmt"
 	"html"
 	"io/ioutil"
@@ -9,6 +11,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"github.com/playwright-community/playwright-go"
 )
 
 type RedditCredentials struct {
@@ -84,7 +87,7 @@ func getOAuthToken() (string, error) {
 	return tokenResponse.AccessToken, nil
 }
 
-func getTopPosts(token string, subreddit string) (PostData, error) {
+func getTopPosts(token string, subreddit string, usedIDFile string) (PostData, error) {
 	var post PostData
 	url := "https://oauth.reddit.com/r/"+subreddit+"/top/.json?t=month&limit=25&raw_json=1"
 
@@ -118,14 +121,33 @@ func getTopPosts(token string, subreddit string) (PostData, error) {
 		return post, err
 	}
 
-	// for _, post := range redditResponse.Data.Children {
-	// 	fmt.Printf("Title: %s\nURL: %s\nContent: %s\n\n", post.Data.Title, post.Data.URL, post.Data.SelfText)
-	// }
+	return selectPost(usedIDFile, redditResponse), nil
+}
 
-	post = redditResponse.Data.Children[4].Data
-	post.SelfText = cleanSelftext(post.SelfText)
+func selectPost(usedIDFile string, redditResponse RedditResponse) PostData {
+	data, err := os.ReadFile(usedIDFile)
+	if err != nil {
+		log.Println(err)
+	}
 
-	return post, nil
+	usedIDs := strings.Split(string(data), ",")
+	fmt.Println(usedIDs)
+	for _, redditPost := range redditResponse.Data.Children{
+		newPost := true
+		for _, id := range usedIDs {
+			if (redditPost.Data.ID == id){
+				newPost = false
+				break
+			}
+		}
+		if (newPost) {
+			redditPost.Data.SelfText = cleanSelftext(redditPost.Data.SelfText)
+			return redditPost.Data
+		}
+	}
+	var post PostData
+	return post
+
 }
 
 func cleanSelftext(text string) string {
@@ -139,19 +161,107 @@ func cleanSelftext(text string) string {
 	return strings.TrimSpace(text)
 }
 
-func CreateRedditText(subreddit SubredditConfig) string {
+func titleScreenshot(subreddit string, title string, titleScreenshotName string) {
+	pw, err := playwright.Run()
+    if err != nil {
+        log.Fatalf("could not start Playwright: %v", err)
+    }
+    browser, err := pw.Chromium.Launch()
+    if err != nil {
+        log.Fatalf("could not launch browser: %v", err)
+    }
+
+	device := pw.Devices["Pixel 5"]
+	context, err := browser.NewContext(playwright.BrowserNewContextOptions{
+		Geolocation: &playwright.Geolocation{
+			Longitude: 12.492507,
+			Latitude:  41.889938,
+		},
+		Permissions:       []string{"geolocation"},
+		Viewport:          device.Viewport,
+		UserAgent:         playwright.String(device.UserAgent),
+		DeviceScaleFactor: playwright.Float(device.DeviceScaleFactor),
+		IsMobile:          playwright.Bool(device.IsMobile),
+		HasTouch:          playwright.Bool(device.HasTouch),
+	})
+    if err != nil {
+        log.Fatalf("could not create context: %v", err)
+    }
+    page, err := context.NewPage()
+    if err != nil {
+        log.Fatalf("could not create page: %v", err)
+    }
+	// Handle dialog event to dismiss popups automatically
+	page.On("dialog", func(dialog playwright.Dialog) {
+		log.Printf("Dialog detected: %s", dialog.Message())
+		dialog.Dismiss()
+	})
+
+	_, err = page.Goto("https://reddit.com/r/"+subreddit+"/top/?t=month&limit=25&raw_json=1")
+    if err != nil {
+        log.Fatalf("could not go to URL: %v", err)
+    }
+	_, err = page.Evaluate(`
+    document.querySelector("shreddit-experience-tree").style.display = "none";
+	`)
+	if err != nil {
+		log.Fatalf("could not inject CSS to hide popup: %v", err)
+	}
+	// Use the CSS selector for the class "top-matter"
+	temp_title := strings.ReplaceAll(title, "'", `\'`)
+	postTitleElement := page.Locator(fmt.Sprintf("article[aria-label='%s']", temp_title))
+
+	// Wait for the element to be visible
+	err = postTitleElement.WaitFor()
+	if err != nil {
+		log.Fatalf("element not found: %v", err)
+	}
+
+	_, err = postTitleElement.Screenshot(playwright.LocatorScreenshotOptions{
+		Path: &titleScreenshotName,
+	})
+
+    if err != nil {
+        log.Fatalf("could not take screenshot: %v", err)
+    }
+    err = browser.Close()
+    if err != nil {
+        log.Fatalf("could not close browser: %v", err)
+    }
+    err = pw.Stop()
+    if err != nil {
+        log.Fatalf("could not stop Playwright: %v", err)
+    }
+}
+
+func saveID(id string, idFile string) {
+	f, err := os.OpenFile(idFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+
+	if _, err := f.WriteString(fmt.Sprintf("%s,", id)); err != nil {
+		log.Println(err)
+	}
+}
+
+func CreateRedditText(subreddit SubredditConfig, titleFileName string, titleScreenshotName string, postFileName string) string {
 	token, err := getOAuthToken()
 	if err != nil {
 		fmt.Println("Error getting OAuth token:", err)
 		return ""
 	}
-	post, err := getTopPosts(token, subreddit.Name)
+	post, err := getTopPosts(token, subreddit.Name, subreddit.UsedIDFile)
 	if err != nil {
 		fmt.Println("Error getting top posts:", err)
 		return ""
 	}
 
-	fmt.Printf("Title: %s\nURL: %s\nContent: %s\n\n", post.Title, post.URL, post.SelfText)
-	ioutil.WriteFile("output.txt", []byte(post.SelfText), 0644)
+	titleScreenshot(subreddit.Name, post.Title, titleScreenshotName)
+	ioutil.WriteFile(titleFileName, []byte(post.Title), 0644)
+	ioutil.WriteFile(postFileName, []byte(post.SelfText), 0644)
+	saveID(post.ID, subreddit.UsedIDFile)
+	
 	return post.ID
 }

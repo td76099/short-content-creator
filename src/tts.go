@@ -10,7 +10,7 @@ import (
 	texttospeechpb "google.golang.org/genproto/googleapis/cloud/texttospeech/v1"
 )
 
-func generateAudio(ctx context.Context, voiceName string) *texttospeechpb.SynthesizeSpeechResponse {
+func generateAudio(ctx context.Context, voiceName string, textFile string) *texttospeechpb.SynthesizeSpeechResponse {
 	client, err := texttospeech.NewClient(ctx)
 	if err != nil {
 		log.Fatalf("Failed to create client: %v", err)
@@ -28,7 +28,7 @@ func generateAudio(ctx context.Context, voiceName string) *texttospeechpb.Synthe
 	}
 
 	// The text to synthesize.
-	textRaw, err := ioutil.ReadFile("output.txt")
+	textRaw, err := ioutil.ReadFile(textFile)
 	text := string(textRaw)
 	fmt.Println(text)
 
@@ -49,19 +49,16 @@ func generateAudio(ctx context.Context, voiceName string) *texttospeechpb.Synthe
 	return resp
 }
 
-func writeAudio(resp *texttospeechpb.SynthesizeSpeechResponse){
+func writeAudio(resp *texttospeechpb.SynthesizeSpeechResponse, outputFile string){
 	// Save the audio to a file.
-	err := ioutil.WriteFile("output.mp3", resp.AudioContent, 0644)
+	err := ioutil.WriteFile(outputFile, resp.AudioContent, 0644)
 	if err != nil {
 		log.Fatalf("Failed to write audio file: %v", err)
 	}
-
-	fmt.Println("Audio content written to file: output.mp3")
-	fmt.Println("we go next")
 }
 
-func CreateTTS(voice string){
+func CreateTTS(voice string, textFile string, outputFile string){
 	ctx := context.Background()
-	resp := generateAudio(ctx, voice)
-	writeAudio(resp)
+	resp := generateAudio(ctx, voice, textFile)
+	writeAudio(resp, outputFile)
 }

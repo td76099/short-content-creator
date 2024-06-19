@@ -23,7 +23,7 @@ type JsonData struct {
 }
 
 // ConvertJSONToSRT converts the JSON data to SRT format and writes to a file
-func convertJSONToSRT(jsonData JsonData, outputSrt string) error {
+func convertJSONToSRT(jsonData JsonData, outputSrt string, offset int) error {
 	file, err := os.Create(outputSrt)
 	if err != nil {
 		return err
@@ -33,8 +33,8 @@ func convertJSONToSRT(jsonData JsonData, outputSrt string) error {
 	index := 1
 	for _, wordInfo := range jsonData.Words {
 		if wordInfo.Start > 0 {
-			startTime := int(wordInfo.Start * 1000)
-			endTime := int(wordInfo.End * 1000)
+			startTime := int(wordInfo.Start * 1000)+(offset*1000)
+			endTime := int(wordInfo.End * 1000)+(offset*1000)
 			_, err := fmt.Fprintf(file, "%d\n%s --> %s\n%s\n\n",
 				index,
 				formatTime(startTime),
@@ -64,7 +64,7 @@ func formatTime(milliseconds int) string {
 	return fmt.Sprintf("%02d:%02d:%02d,%03d", hours, minutes, seconds, millis)
 }
 
-func CreateSRT(inputFile string) {
+func CreateSRT(inputFile string, subtitleFileName string, offset int) {
 	// Replace "input.json" with the path to your input JSON file
 	data, err := ioutil.ReadFile(inputFile)
 	if err != nil {
@@ -79,8 +79,7 @@ func CreateSRT(inputFile string) {
 		return
 	}
 
-	outputSrt := "output.srt"
-	err = convertJSONToSRT(jsonData, outputSrt)
+	err = convertJSONToSRT(jsonData, subtitleFileName, offset)
 	if err != nil {
 		fmt.Println("Error converting JSON to SRT:", err)
 	}

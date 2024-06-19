@@ -1,7 +1,9 @@
 ./creds/*
 ./videos/*
 ./output/*
+./data/*
 
 creds/*
 videos/*
 output/*
+data/*
